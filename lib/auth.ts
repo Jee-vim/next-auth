@@ -44,7 +44,6 @@ const auth: NextAuthOptions = {
           const data: any = await Http.auth.register({ ...payload });
           return {
             token: data.token,
-            refresh_token: data.refreshToken, // dummy
             email: credentials?.email,
             name: credentials?.name,
           };
@@ -66,16 +65,16 @@ const auth: NextAuthOptions = {
         try {
           const { data }: any = await Http.auth.login({ ...payload });
           // const { data: userInfo }: any = await Http.auth.me(data?.token);
-          console.log(data)
+          console.log(data);
           return {
             token: data?.token,
-            refresh_token: data?.refreshToken, // dummy
             email: credentials?.email,
             name: data?.user?.name,
             // image: userInfo?.user?.avatar,
             // role: userInfo?.user?.role,
           };
         } catch (error: any) {
+          console.log(error);
           throw new Error(error?.response?.data?.message);
         }
       },
@@ -96,7 +95,6 @@ const auth: NextAuthOptions = {
             email: session?.user?.email,
             image: session?.user?.image,
             token: session?.token,
-            refresh_token: session?.refresh_token,
             role: session?.role,
             credentials: authCredentials.verify,
             onBoarding: true,
@@ -109,8 +107,7 @@ const auth: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, account, user }: any) {
-      const { signIn, signUp, resetPassword, verify, me, google } =
-        authCredentials;
+      const { signIn, google } = authCredentials;
 
       if (account?.provider === google) {
         const payload = { login_via: "EMAIL", email: token?.email };
@@ -128,50 +125,21 @@ const auth: NextAuthOptions = {
         }
       }
 
-      if (
-        account?.provider === signIn ||
-        account?.provider === signUp ||
-        account?.provider === resetPassword ||
-        account?.provider === verify
-      ) {
-        token.token = user?.token;
-        token.refresh_token = user.refresh_token;
-        token.access_token_expires = Date.now() + 60 * 60 * 1000; // 1 hour
-        token.email = user?.email;
-        token.name = user?.name;
-        token.image = user?.image;
-        token.role = user?.role;
-        token.onBoarding = true;
-        if (account?.provider) {
-          switch (account?.provider) {
-            case signIn:
-              token.credentials = signIn;
-              break;
-            case signUp:
-              token.credentials = signUp;
-              break;
-            case resetPassword:
-              token.credentials = resetPassword;
-              break;
-            case verify:
-              token.credentials = verify;
-              break;
-            case me:
-              token.credentials = me;
-              break;
-            default:
-              token.credentials = account?.provider + "-default";
-          }
-        }
-      }
+      token.token = user?.token;
+      token.email = user?.email;
+      token.name = user?.name;
+      token.image = user?.image;
+      token.role = user?.role;
+      token.onBoarding = user?.onBoarding;
       return token;
     },
     async session({ session, token }: any) {
       session.role = token.role;
+      session.name = token.name;
       session.token = token.token;
-      session.refresh_token = token.refresh_token;
       session.onBoarding = token.onBoarding;
       session.credentials = token.credentials;
+      session.image = token.image;
       return session;
     },
   },
